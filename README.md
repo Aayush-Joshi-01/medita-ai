@@ -109,8 +109,14 @@ docker compose --profile observability up -d  # prometheus (:9090), grafana (:30
 ## Status
 
 Early construction. The build order is: **(1) documentation ✅ → (2) monorepo + infra
-scaffolding ✅ → (3) backend core → (4) domain features → (5) FHIR layer → (6) frontend → (7)
-tests / CI / observability.** Each step is committed separately.
+scaffolding ✅ → (3) backend core ✅ → (4) domain features → (5) FHIR layer → (6) frontend →
+(7) tests / CI / observability.** Each step is committed separately.
+
+Auth is real now: `POST /api/account/register`, `POST /api/account/login`,
+`POST /api/account/refresh`, and `GET /api/account/me` work end-to-end against Postgres, with
+Alembic managing the schema (`make migrate` is functional). `make test` runs the backend's
+pytest suite (currently: a health check and a full register → login → me → refresh flow
+against an isolated database).
 
 ---
 

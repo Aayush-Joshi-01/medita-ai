@@ -8,13 +8,13 @@ Status legend: **planned** · **in progress** · **done**.
 
 ## Authentication & accounts
 
-**Status:** planned
+**Status:** done (backend) — frontend wiring lands in step 6
 
 | Concern | Detail |
 |---|---|
 | Endpoints | `POST /account/register`, `POST /account/login`, `POST /account/refresh`, `GET /account/me` |
 | Frontend | `/(auth)/login` |
-| Notes | JWT access + refresh tokens; roles `patient` / `doctor`; bcrypt hashing; `SECRET_KEY` required at boot. |
+| Notes | JWT access + refresh tokens; roles `patient` / `doctor`; bcrypt hashing; `SECRET_KEY` required at boot (`backend/app/core/security.py`, `backend/app/api/routers/account.py`). |
 
 ---
 

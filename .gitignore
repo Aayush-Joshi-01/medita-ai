@@ -260,12 +260,15 @@ volumes/
 Thumbs.db
 
 # ---------------------------------------------------------------------------
-# Local media / uploads / model caches
+# Local runtime artifacts
+#
+# Object storage is MinIO (infra/minio), not the filesystem, so these only
+# guard against stray local files (manual testing, ad-hoc scripts). Scoped to
+# avoid matching real source directories like backend/app/models/.
 # ---------------------------------------------------------------------------
-uploads/
-media/
 *.mp4
 *.mov
 *.m4a
-models/
-.cache/huggingface/
+*.db
+backend/.cache/
+frontend/openapi.json

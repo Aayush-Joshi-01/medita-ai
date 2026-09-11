@@ -76,12 +76,75 @@ Not verified in this environment: an actual `docker compose up` run — the Dock
 engine was not reachable here (CLI present, daemon not running). Run `docker compose up -d`
 locally and check `docker compose ps` before relying on this stack.
 
+### Step 3 — Backend core (2026-09-12)
+
+Added:
+
+- `app/core/config.py` — `Settings` (pydantic-settings) reading every variable from
+  `.env.example`; `secret_key` and `database_url` have no defaults, so the app fails fast if
+  either is unset.
+- `app/core/security.py` — bcrypt password hashing (direct `bcrypt`, not passlib — sidesteps
+  its known incompatibility warning with recent bcrypt releases) and JWT access/refresh token
+  issuance + decoding (`python-jose`).
+- `app/core/errors.py` — `AppError` hierarchy (`NotFoundError`, `ConflictError`, `AuthError`,
+  `ForbiddenError`) and exception handlers producing a consistent
+  `{"error": {"code", "message", "details"?}}` envelope, registered in `app/main.py`.
+- `app/core/deps.py` — `get_db`, `get_current_user` (JWT bearer → `User`), `require_role(...)`
+  factory for role-gated endpoints.
+- `app/db/session.py` — SQLAlchemy 2.0 engine/session/`Base`, wired to `settings.database_url`.
+- `app/models/user.py` — the `User` model (email, bcrypt hash, full name, `patient`/`doctor`
+  role, active flag, timestamps); extended with domain relationships in step 4.
+- `app/schemas/user.py` — `UserCreate`, `UserLogin`, `UserRead`, `TokenPair`, `RefreshRequest`.
+- `app/api/routers/account.py` + `health.py` — `POST /account/register`, `POST
+  /account/login`, `POST /account/refresh`, `GET /account/me`; `/health` now round-trips a
+  real DB query. `app/main.py` is now a proper app factory (CORS, exception handlers, router
+  includes).
+- `app/services/storage.py` — MinIO/S3 client (`put_object` / `get_object` / `delete_object` /
+  `presigned_url`), used once uploads land in step 4.
+- `app/services/llm.py` — thin `httpx` client over the LiteLLM proxy's OpenAI-compatible API
+  (`chat`, `vision_chat`, `embed`), referencing only the logical model names from config.
+- `app/services/rag.py` — Qdrant per-user RAG (`ensure_collection`, `upsert_chunks`, `search`),
+  filtered by a `user_id` payload field; embeds via `services/llm.py`.
+- `alembic.ini`, `alembic/env.py`, `alembic/script.py.mako`, and the first migration
+  (`0001_create_users`) — Alembic now owns the schema; `create_all`/ad-hoc `CREATE INDEX` is
+  not used anywhere.
+- `tests/conftest.py`, `tests/test_account.py` — a full register → duplicate-rejects → login →
+  bad-password-rejects → me → unauthenticated-rejects → refresh → refresh-with-access-token-
+  rejects flow, against an isolated in-memory SQLite database via a `get_db` dependency
+  override.
+- `backend/pyproject.toml` — added sqlalchemy, alembic, psycopg2-binary, python-jose, bcrypt,
+  boto3, qdrant-client, httpx, python-multipart, email-validator; ruff configured to treat
+  FastAPI's `Depends(...)` argument defaults as intentional (not bugbear B008).
+- `CORS_ORIGINS` added to `.env.example`.
+
+Fixed:
+
+- A bare `models/` line in `.gitignore` (meant for a future ML-model-weight cache) was
+  silently matching `backend/app/models/` and had kept the entire SQLAlchemy models package
+  out of every commit. Scoped `.gitignore`'s local-runtime-artifacts section to patterns that
+  can't collide with source directories.
+
+Verified (this environment has a working Python/uv toolchain, unlike Docker):
+
+- `uv pip install -e ".[dev]"` installs cleanly.
+- `pytest` — 2/2 passing.
+- `ruff check .` and `ruff format --check .` — clean.
+- `mypy .` (strict) — clean, after scoping `python_version` to 3.12 so it can parse numpy's
+  stubs (pulled in transitively by qdrant-client; numpy is never imported directly) — the
+  actual runtime stays on Python 3.11 per `backend/Dockerfile`.
+- `alembic upgrade head` and `alembic downgrade base` both run cleanly against a throwaway
+  SQLite database; inspected the resulting `users` table shape.
+
+Not verified in this environment: running these same steps inside the actual Docker
+containers against real Postgres/Qdrant/MinIO/LiteLLM — Docker Desktop's engine is still not
+reachable here. The above gives good confidence the code is correct; a `docker compose up`
+run on a machine with Docker running is still the first real integration test.
+
 ### Planned next steps
 
-- Step 3 — Backend core: FastAPI factory, config, security, database, Alembic baseline,
-  storage/LLM/RAG services, auth endpoints.
-- Step 4 — Domain feature port (AI doctor, imaging, transcription, RAG, doctor–patient,
-  appointments, knowledge base) with arq workers.
+- Step 4 — Domain feature port (specializations, doctors, doctor–patient mapping,
+  appointments, chat/chat-history, AI doctor personas + RAG, image analysis, transcription +
+  analysis, knowledge base) with arq workers and seed data.
 - Step 5 — FHIR layer.
 - Step 6 — Frontend implementation.
 - Step 7 — Tests, CI, observability.

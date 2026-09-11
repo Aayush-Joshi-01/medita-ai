@@ -8,6 +8,16 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
+    "sqlalchemy>=2.0.35",
+    "alembic>=1.13",
+    "psycopg2-binary>=2.9",
+    "python-jose[cryptography]>=3.3",
+    "bcrypt>=4.2",
+    "boto3>=1.35",
+    "qdrant-client>=1.12",
+    "httpx>=0.27",
+    "python-multipart>=0.0.12",
+    "email-validator>=2.2",
 ]
 
 [project.optional-dependencies]
@@ -33,8 +43,17 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection pattern relies on calling Depends(...) in
+# argument defaults; that's correct usage, not the mutable-default bug B008
+# guards against.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+
 [tool.mypy]
-python_version = "3.11"
+# Set above the 3.11 runtime (backend/Dockerfile) only so mypy can parse
+# numpy's stubs (pulled in transitively by qdrant-client, which we never
+# import directly); it doesn't license using 3.12-only syntax in our code.
+python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 
