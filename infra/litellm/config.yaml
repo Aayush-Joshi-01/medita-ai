@@ -1,0 +1,41 @@
+# LiteLLM gateway config. Application code (backend/app/services/llm.py) only
+# ever references the logical model_name values below (chat-default,
+# vision-default, embed-default) — never a provider-specific model id.
+#
+# Two entries sharing a model_name are load-balanced / used as fallbacks by
+# LiteLLM's router. Add or reorder entries to change provider priority
+# without touching application code.
+
+model_list:
+  - model_name: chat-default
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: chat-default
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: vision-default
+    litellm_params:
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: vision-default
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  - model_name: embed-default
+    litellm_params:
+      model: gemini/text-embedding-004
+      api_key: os.environ/GEMINI_API_KEY
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 60
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

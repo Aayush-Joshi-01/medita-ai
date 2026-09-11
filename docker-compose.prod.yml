@@ -1,0 +1,56 @@
+# Production-shaped overrides. Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Removes dev bind-mounts and hot-reload commands, builds the `prod` Dockerfile
+# stages, adds restart policies, and drops host port publishing for internal
+# services (only the proxy is exposed).
+
+services:
+  proxy:
+    restart: unless-stopped
+
+  frontend:
+    build:
+      target: prod
+    volumes: !reset []
+    environment:
+      NODE_ENV: production
+    ports: !reset []
+    restart: unless-stopped
+
+  backend:
+    build:
+      target: prod
+    volumes: !reset []
+    ports: !reset []
+    restart: unless-stopped
+
+  worker:
+    build:
+      target: prod
+    volumes: !reset []
+    restart: unless-stopped
+
+  db:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  qdrant:
+    ports: !reset []
+    restart: unless-stopped
+
+  minio:
+    ports: !reset []
+    restart: unless-stopped
+
+  litellm:
+    ports: !reset []
+    restart: unless-stopped
+
+  hapi-fhir:
+    ports: !reset []
+    restart: unless-stopped

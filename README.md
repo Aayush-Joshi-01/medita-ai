@@ -71,17 +71,25 @@ medita-ai/
 
 ## Quickstart
 
-> Not yet runnable — the repository currently contains documentation only. Scaffolding and
-> service code land in subsequent steps (see [`CHANGELOG.md`](CHANGELOG.md)).
+```bash
+cp .env.example .env          # fill in a SECRET_KEY and any LLM provider keys you have
+docker compose up -d          # bring up the full stack
+docker compose ps             # confirm every service is healthy
+# open http://localhost:8080
+```
 
-Planned flow:
+The monorepo and infra scaffolding is in place: every service in
+[`docker-compose.yml`](docker-compose.yml) builds and starts, `backend` and `frontend` are
+minimal stub apps behind the `proxy` reverse proxy, and `GET /api/health` responds. Domain
+logic (auth, AI features, migrations, seed data) lands in the next build steps — `make
+migrate`, `make seed` and `make test` are defined but not yet functional (see
+[`CHANGELOG.md`](CHANGELOG.md) for current progress).
+
+Optional profiles:
 
 ```bash
-cp .env.example .env          # fill in LLM provider keys and secrets
-docker compose up -d          # bring up the full stack
-make migrate                  # apply database migrations
-make seed                     # load specialisations + demo data
-# open http://localhost:8080
+docker compose --profile tools up -d          # mailhog (:8025), adminer (:8081)
+docker compose --profile observability up -d  # prometheus (:9090), grafana (:3001)
 ```
 
 ---
@@ -100,9 +108,9 @@ make seed                     # load specialisations + demo data
 
 ## Status
 
-Early construction. The build order is: **(1) documentation → (2) monorepo + infra scaffolding
-→ (3) backend core → (4) domain features → (5) FHIR layer → (6) frontend → (7) tests / CI /
-observability.** Each step is committed separately.
+Early construction. The build order is: **(1) documentation ✅ → (2) monorepo + infra
+scaffolding ✅ → (3) backend core → (4) domain features → (5) FHIR layer → (6) frontend → (7)
+tests / CI / observability.** Each step is committed separately.
 
 ---
 
