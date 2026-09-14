@@ -3,7 +3,7 @@
 One collection holds every user's document chunks; every read and write
 filters by `user_id` in the point payload (docs/architecture.md, section 6). Called
 from the document-ingestion job and the AI-doctor chat endpoint, both landing
-in build step 4.
+in build step 5.
 """
 
 from __future__ import annotations

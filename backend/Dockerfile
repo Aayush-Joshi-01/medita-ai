@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# ffmpeg: audio/video processing for transcription (step 4)
+# ffmpeg: audio/video processing for transcription (step 5)
 # curl: container healthchecks
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg curl \

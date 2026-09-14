@@ -1,2 +1,3 @@
-# llm.py, storage.py, rag.py land in build step 3 ("backend core").
-# transcription.py, documents.py, audio.py, fhir.py land in steps 4-5.
+# llm.py, storage.py, rag.py landed in step 3 ("backend core").
+# onboarding.py, notifications.py land in step 4 ("HCP & hospital onboarding").
+# transcription.py, documents.py, audio.py land in step 5; fhir.py in step 6.

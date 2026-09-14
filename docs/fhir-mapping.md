@@ -45,12 +45,37 @@ Example: a patient with internal `users.id = 42` →
 | `id` | `Practitioner.identifier` |
 | `full_name` | `Practitioner.name[0].text` |
 | `email` / `phone` | `Practitioner.telecom` |
-| `specialization_id` | `PractitionerRole.specialty[0]` (coded) |
+| `hcp_profiles.primary_specialization_id` | `PractitionerRole.specialty[0]` (coded) |
+
+One `PractitionerRole` is emitted per **active** `hospital_affiliations` row for that
+practitioner (see below) — a doctor affiliated with two hospitals yields two
+`PractitionerRole` resources, one per `organization`. An independent HCP (no active
+affiliation) still gets a single `PractitionerRole`, with no `organization` reference. Only
+`hcp_profiles.status = approved` practitioners are synced at all.
 
 ### `specializations` → coded concept
 
 Used as `PractitionerRole.specialty` and `Encounter.type`. System:
 `https://medita.ai/fhir/CodeSystem/specialization`.
+
+### `hospitals` → `Organization`
+
+| Internal field | FHIR path |
+|---|---|
+| `id` | `Organization.identifier[0]` (system `.../identifier/hospital`) |
+| `registration_number` | `Organization.identifier[1]` (system `.../identifier/hospital-registration`) |
+| `name` | `Organization.name` |
+| `address_line1`/`address_line2`, `city`, `state`, `postal_code`, `country` | `Organization.address[0]` |
+| `contact_email` | `Organization.telecom[?system=email]` |
+| `contact_phone` | `Organization.telecom[?system=phone]` |
+| `status = approved` | `Organization.active = true`; any other status → not yet synced (no resource), or `active = false` if a previously-approved hospital is later `suspended` |
+
+### `hospital_affiliations` (status = `active`) → `PractitionerRole.organization`
+
+Not a resource of its own — it's the join that drives which `PractitionerRole` resources
+exist and which `Organization` each references (see the `Practitioner` mapping above). An
+`ended` affiliation stops that `PractitionerRole` from being emitted on the next sync; it is
+not retroactively deleted from HAPI.
 
 ### `appointments` → `Appointment` (and `Encounter` once completed)
 

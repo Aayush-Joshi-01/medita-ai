@@ -1,5 +1,6 @@
-"""Core auth entity. Extended with domain relationships (specialization,
-consulting doctor, etc.) in build step 4."""
+"""Core auth entity. HCP-specific fields live on the separate `HCPProfile`
+(step 4, hcp_profile.py) rather than here; patient-doctor relationships
+(consulting_doctor_id, etc.) land in step 5 ("domain feature port")."""
 
 from __future__ import annotations
 
@@ -12,9 +13,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.session import Base
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     patient = "patient"
     doctor = "doctor"
+    # Global, manually-bootstrapped role (see CONTRIBUTING.md) — reviews
+    # hospital applications and independent HCP applications. Per-hospital
+    # admin-ness is deliberately NOT a role; see models/hospital_admin.py.
+    platform_admin = "platform_admin"
 
 
 class User(Base):

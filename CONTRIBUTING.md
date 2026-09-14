@@ -13,10 +13,6 @@
 
 ## Local setup
 
-> The stack is not yet runnable — see [`CHANGELOG.md`](CHANGELOG.md) for current progress.
-
-Once scaffolding lands:
-
 ```bash
 cp .env.example .env      # fill in secrets and LLM provider keys
 docker compose up -d      # full stack
@@ -26,7 +22,21 @@ make test                 # backend + frontend tests
 ```
 
 Prerequisites: Docker + Docker Compose. Host installs of Python or Node are only needed for
-running tooling outside containers.
+running tooling outside containers. See [`CHANGELOG.md`](CHANGELOG.md) for exactly which
+endpoints/features are live at each step.
+
+### Bootstrapping the first platform_admin
+
+There's no self-service way to become a `platform_admin` (the role that reviews hospital
+applications and independent HCP applications) — by design, it's rare and trusted. After
+registering a normal account, promote it directly in the database:
+
+```sql
+UPDATE users SET role = 'platform_admin' WHERE email = 'you@example.com';
+```
+
+Via `adminer` (`docker compose --profile tools up -d`, then `localhost:8081`) or `psql` against
+the `db` service.
 
 ## Conventions
 

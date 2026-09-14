@@ -166,10 +166,20 @@ The frontend polls status endpoints; server-sent events may be added later.
 - JWT (HS256) access tokens + refresh tokens. `SECRET_KEY` is a required environment
   variable — the app refuses to start without it.
 - Passwords hashed with bcrypt.
-- Role checks (`patient`, `doctor`) are centralised in `core/deps.py` dependencies.
+- Role checks (`patient`, `doctor`, `platform_admin`) are centralised in `core/deps.py`
+  dependencies (`get_current_user`, `require_role(...)`).
+- **Hospital-admin membership is deliberately not a `UserRole` value.** It's per-hospital,
+  non-exclusive with a user's existing role, and granted automatically as a side effect of
+  hospital approval (a row in `hospital_admins`) — unlike `platform_admin`, which is global,
+  rare, and has no self-service grant path (bootstrapped manually, see `CONTRIBUTING.md`).
+  `require_hospital_admin(...)` in `core/deps.py` checks membership from a path parameter.
 - Rate limiting on auth and AI endpoints.
 - All AI endpoints require authentication (the v2 gap where `/transcribe` and `/analyze` were
   open is closed).
+
+See [`fhir-mapping.md`](fhir-mapping.md) for how `hospitals` and `hospital_affiliations` map
+to FHIR `Organization` and `PractitionerRole.organization`, and `docs/features.md` for the
+full HCP/Hospital onboarding state machine and API surface.
 
 ---
 

@@ -1,2 +1,2 @@
 # doctors_config/*.yaml specialist persona prompts + loader.
-# Populated in build step 3 ("domain feature port").
+# Populated in build step 5 ("domain feature port").

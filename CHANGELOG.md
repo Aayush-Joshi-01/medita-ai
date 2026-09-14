@@ -140,11 +140,81 @@ containers against real Postgres/Qdrant/MinIO/LiteLLM — Docker Desktop's engin
 reachable here. The above gives good confidence the code is correct; a `docker compose up`
 run on a machine with Docker running is still the first real integration test.
 
+### Step 4a — HCP & Hospital onboarding: schema + roles (2026-09-14)
+
+New step, inserted ahead of the domain feature port (now step 5) because appointments,
+doctor–patient mapping, and the doctor directory all need real, verified doctor/hospital
+accounts to be meaningful. Two-tier review model (confirmed with the user): `platform_admin`
+reviews hospitals and independent HCPs; a per-hospital `hospital_admins` membership reviews
+HCPs requesting that hospital. Hospital affiliation is optional for HCPs. This half of the
+step is schema-only — additive, no application behavior changes yet; the API, service layer,
+and notifications land in step 4b.
+
+Added:
+
+- `app/models/user.py` — added `UserRole.platform_admin` (global, manually-bootstrapped role;
+  see `CONTRIBUTING.md`). Deliberately did **not** add a `hospital_admin` role value — that's
+  modeled as membership in the new `hospital_admins` table instead (per-hospital, non-exclusive
+  with a user's existing role, granted automatically on hospital approval).
+- `app/models/enums.py` — shared `OnboardingStatus` (draft/submitted/under_review/
+  changes_requested/approved/rejected/suspended), `OnboardingOwnerType` (hospital/hcp),
+  `AffiliationStatus`.
+- `app/models/specialization.py`, `hospital.py`, `hospital_admin.py`, `hcp_profile.py`,
+  `hospital_affiliation.py`, `onboarding_document.py`, `onboarding_status_event.py` — the
+  full onboarding schema: a hospital's application *is* its record (`hospitals.status`, no
+  separate application table); `hcp_profiles` is 1:1 with `users` and independent of
+  `User.is_active`; `hospital_affiliations` is the live many-to-many state, distinct from
+  `hcp_profiles.requested_hospital_id` (onboarding *intent*, set once at submit);
+  `onboarding_documents` is a polymorphic upload table (owner_type/owner_id, no DB-level FK
+  on owner_id — integrity enforced in the service layer landing in 4b); `onboarding_status_events`
+  is the audit trail.
+- `alembic/versions/0002_add_platform_admin_role.py` — extends the existing `user_role`
+  native enum. Isolated in its own migration, wrapped in `op.get_context().autocommit_block()`
+  — `ALTER TYPE ... ADD VALUE` cannot share a transaction with anything using the new value,
+  and Alembic wraps each migration in one transaction by default. `downgrade()` is a
+  documented no-op (Postgres can't cleanly drop an enum value).
+- `alembic/versions/0003_create_onboarding_schema.py` — two fresh native enums
+  (`onboarding_status`, `onboarding_owner_type`) + all 7 tables above, FK-ordered. Safe as one
+  migration — everything here is a brand-new `CREATE TYPE`/`CREATE TABLE`, none of 0002's
+  enum-extension hazard.
+- `app/schemas/specialization.py`, `hospital.py`, `hcp.py`, `onboarding.py` — response/request
+  models for the API landing in 4b.
+- `app/seeds/load.py` — idempotent specialization seeder (cardiology, dermatology,
+  gastroenterology, neurology, general medicine); this is what `make seed` now actually runs.
+- `docs/fhir-mapping.md` — added `hospitals → Organization`, fixed the doctor mapping's stale
+  `specialization_id` reference to `hcp_profiles.primary_specialization_id`, and documented
+  `hospital_affiliations (active) → PractitionerRole.organization` (one `PractitionerRole` per
+  active affiliation).
+- `docs/features.md`, `docs/architecture.md` — Hospital/HCP onboarding sections; corrected
+  several stale step-number references left over from this step being inserted ahead of the
+  old step 4 (now step 5).
+
+Verified locally (same real Python/uv toolchain as step 3; Docker Desktop's engine is still
+not reachable in this sandbox):
+
+- `ruff check`/`format`, `mypy --strict` — clean across all new/changed files.
+- `pytest` — all existing tests still pass; critically, `tests/test_account.py`'s
+  `Base.metadata.create_all()` now builds all 7 new tables (plus `users`) against SQLite as a
+  side effect of every model being registered in `app/models/__init__.py` — a real structural
+  check of every column/FK/index, not just an import check. Manually inspected the generated
+  `CREATE TABLE` statements for `hospitals`, `hcp_profiles`, `hospital_affiliations`, and
+  `onboarding_documents` to confirm FKs and constraints match the design.
+- `alembic history` confirms the revision chain resolves correctly: `0001 → 0002 → 0003 (head)`.
+
+Not verified in this environment: actually running `alembic upgrade head` for 0002/0003 —
+0002 uses Postgres-only `ALTER TYPE` syntax that has no SQLite equivalent, so the full chain
+can only be exercised against real Postgres (step 2's `docker compose up` gap applies here
+too). The `Base.metadata.create_all()` check above gives strong confidence the table shapes
+are correct independent of that.
+
 ### Planned next steps
 
-- Step 4 — Domain feature port (specializations, doctors, doctor–patient mapping,
-  appointments, chat/chat-history, AI doctor personas + RAG, image analysis, transcription +
-  analysis, knowledge base) with arq workers and seed data.
-- Step 5 — FHIR layer.
-- Step 6 — Frontend implementation.
-- Step 7 — Tests, CI, observability.
+- Step 4b — HCP & Hospital onboarding: API + notifications (`services/onboarding.py`,
+  `services/notifications.py`, `hospitals.py`/`hcp.py` routers, MailHog wiring, full test
+  suite).
+- Step 5 — Domain feature port (doctors directory, doctor–patient mapping, appointments,
+  chat/chat-history, AI doctor personas + RAG, image analysis, transcription + analysis,
+  knowledge base) with arq workers.
+- Step 6 — FHIR layer (sync implementation; the mapping is already documented).
+- Step 7 — Frontend implementation.
+- Step 8 — Tests, CI, observability.
