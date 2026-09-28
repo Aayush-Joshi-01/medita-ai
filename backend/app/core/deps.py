@@ -11,9 +11,16 @@ from sqlalchemy.orm import Session
 from app.core.errors import AuthError, ForbiddenError
 from app.core.security import decode_token
 from app.db.session import get_db
+from app.models.hospital_admin import HospitalAdmin
 from app.models.user import User, UserRole
 
-__all__ = ["get_db", "get_current_user", "require_role"]
+__all__ = [
+    "get_db",
+    "get_current_user",
+    "require_role",
+    "require_platform_admin",
+    "require_hospital_admin",
+]
 
 # tokenUrl is informational (drives the Swagger "Authorize" flow); the actual
 # route is registered by api/routers/account.py.
@@ -48,3 +55,31 @@ def require_role(*roles: UserRole) -> Callable[[User], User]:
         return user
 
     return _dependency
+
+
+# Global — reviews hospital applications and independent HCP applications.
+require_platform_admin = require_role(UserRole.platform_admin)
+
+
+def require_hospital_admin(
+    hospital_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Route-scoped guard: the caller must be an admin of the hospital named
+    by the `{hospital_id}` path parameter (every hospital-scoped route must
+    use exactly that parameter name for FastAPI to bind it here).
+
+    Hospital-admin-ness is deliberately not a `UserRole` value — see
+    models/hospital_admin.py — so this checks table membership instead of
+    `user.role`, unlike `require_role`/`require_platform_admin` above.
+    """
+    is_admin = (
+        db.query(HospitalAdmin)
+        .filter(HospitalAdmin.hospital_id == hospital_id, HospitalAdmin.user_id == user.id)
+        .first()
+        is not None
+    )
+    if not is_admin:
+        raise ForbiddenError("You are not an admin of this hospital")
+    return user

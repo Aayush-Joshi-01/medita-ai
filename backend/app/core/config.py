@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     # FHIR
     hapi_fhir_url: str = "http://hapi-fhir:8080/fhir"
 
+    # Email (MailHog in dev — see infra's `tools` compose profile). Best-effort
+    # only: services/notifications.py never lets a send failure fail a request.
+    smtp_host: str = "mailhog"
+    smtp_port: int = 1025
+    smtp_from_address: str = "no-reply@medita.ai"
+    smtp_timeout_seconds: int = 5
+
     # Comma-separated, e.g. "http://localhost:3000,http://localhost:8080"
     cors_origins: str = "http://localhost:3000,http://localhost:8080"
 

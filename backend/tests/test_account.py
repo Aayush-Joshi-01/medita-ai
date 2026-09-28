@@ -1,36 +1,7 @@
 """Register -> login -> me -> refresh flow, against an isolated in-memory
-SQLite database (dependency-overridden; does not touch the real engine)."""
-
-from collections.abc import Generator
+SQLite database (see conftest.py's `client` fixture)."""
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.db.session import Base, get_db
-from app.main import app
-
-engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base.metadata.create_all(bind=engine)
-
-
-def _override_get_db() -> Generator[Session, None, None]:
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = _override_get_db
-
-client = TestClient(app)
 
 CREDENTIALS = {
     "email": "patient@example.com",
@@ -39,7 +10,7 @@ CREDENTIALS = {
 }
 
 
-def test_register_login_me_refresh_flow() -> None:
+def test_register_login_me_refresh_flow(client: TestClient) -> None:
     register_resp = client.post("/account/register", json=CREDENTIALS)
     assert register_resp.status_code == 201
     body = register_resp.json()

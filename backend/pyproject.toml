@@ -44,10 +44,17 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.flake8-bugbear]
-# FastAPI's dependency-injection pattern relies on calling Depends(...) in
-# argument defaults; that's correct usage, not the mutable-default bug B008
-# guards against.
-extend-immutable-calls = ["fastapi.Depends", "fastapi.params.Depends"]
+# FastAPI's dependency-injection pattern relies on calling Depends(...)/
+# File(...)/Form(...) (and, for role-gated routes, require_role(...) inside
+# a Depends(...)) in argument defaults; that's correct usage, not the
+# mutable-default bug B008 guards against.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.params.Depends",
+    "fastapi.File",
+    "fastapi.Form",
+    "app.core.deps.require_role",
+]
 
 [tool.mypy]
 # Set above the 3.11 runtime (backend/Dockerfile) only so mypy can parse

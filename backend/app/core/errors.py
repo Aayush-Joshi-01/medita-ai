@@ -18,9 +18,15 @@ class AppError(Exception):
     code: str = "app_error"
 
     def __init__(
-        self, message: str, *, status_code: int | None = None, code: str | None = None
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        code: str | None = None,
+        details: object = None,
     ) -> None:
         self.message = message
+        self.details = details
         if status_code is not None:
             self.status_code = status_code
         if code is not None:
@@ -48,6 +54,15 @@ class ForbiddenError(AppError):
     code = "forbidden"
 
 
+class UnprocessableError(AppError):
+    """422 — the request is well-formed but fails a business rule, e.g.
+    submitting an onboarding application with required documents missing
+    (`details={"missing": [...]}`)."""
+
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+    code = "unprocessable"
+
+
 def _error_envelope(code: str, message: str, details: object = None) -> dict[str, object]:
     error: dict[str, object] = {"code": code, "message": message}
     if details is not None:
@@ -59,7 +74,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(
-            status_code=exc.status_code, content=_error_envelope(exc.code, exc.message)
+            status_code=exc.status_code,
+            content=_error_envelope(exc.code, exc.message, jsonable_encoder(exc.details)),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -67,7 +83,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=_error_envelope(
                 "validation_error", "Request validation failed", jsonable_encoder(exc.errors())
             ),
